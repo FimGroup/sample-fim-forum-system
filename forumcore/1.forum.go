@@ -2,7 +2,9 @@ package forumcore
 
 import (
 	"embed"
+	"errors"
 	"log"
+	"os"
 
 	"github.com/FimGroup/fim/components"
 	"github.com/FimGroup/fim/fimapi/basicapi"
@@ -18,6 +20,20 @@ var sceneFs embed.FS
 func StartForum() error {
 	container := fimcore.NewUseContainer()
 	if err := components.InitComponent(container); err != nil {
+		return err
+	}
+	settableConfigureManager := fimcore.NewSettableConfigureManager()
+	{
+		dburl, ok := os.LookupEnv("DATABASE_URL")
+		if !ok {
+			panic(errors.New("database url is not set in env"))
+		}
+		settableConfigureManager.SetConfigure("forum_database", dburl)
+	}
+	if err := loadConfigureManager(container, []basicapi.ConfigureManager{
+		fimcore.NewEnvConfigureManager(),
+		settableConfigureManager,
+	}); err != nil {
 		return err
 	}
 	if err := loadCustomFn(container, map[string]basicapi.FnGen{
@@ -45,6 +61,15 @@ func StartForum() error {
 		return err
 	}
 
+	return nil
+}
+
+func loadConfigureManager(container basicapi.BasicContainer, managers []basicapi.ConfigureManager) error {
+	for _, v := range managers {
+		if err := container.AddConfigureManager(v); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
