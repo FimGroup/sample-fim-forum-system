@@ -21,6 +21,9 @@ func main() {
 		panic(err)
 	}
 
+	wd, err := os.Getwd()
+	fmt.Println("working directory:", wd, err)
+
 	c := make(chan os.Signal)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT)
 	_ = <-c
