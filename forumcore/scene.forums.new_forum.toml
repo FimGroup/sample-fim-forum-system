@@ -37,43 +37,63 @@ pipeline.steps = [
     ],
 ]
 connector_mapping.http_inst.req = [
-    ["forum/forum_name", "http/body/forum_name"],
-    ["forum/forum_description", "http/body/forum_description"],
-    ["forum/parent_forum_id", "http/body/parent_forum_id"],
+    ["http", "", [
+        ["body", "forum", [
+            ["forum_name", "forum_name"],
+            ["forum_description", "forum_description"],
+            ["parent_forum_id", "parent_forum_id"],
+        ]]
+    ]]
 ]
 connector_mapping.http_inst.res = [
-    ["forum/forum_id", "http/body/forum_id"],
+    ["", "http", [
+        ["forum", "body", [
+            ["forum_id", "forum_id"],
+        ]]
+    ]]
 ]
 connector_mapping.http_inst.err_simple = [
     { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
 ]
 connector_mapping.query_forum.req = [
-    ["forum/parent_forum_id", "sql.args.0"],
+    ["forum", "", [
+        ["parent_forum_id", "sql.args.0"],
+    ]]
 ]
 connector_mapping.query_forum.res = [
-    ["database/forum/parent_forum_id", "sql.result.0"],
+    ["", "database", [
+        ["", "forum", [
+            ["sql.result.0", "parent_forum_id"],
+        ]]
+    ]]
 ]
 connector_mapping.forum_insert.req = [
-    ["forum/forum_id", "sql.args.0"],
-    ["forum/forum_name", "sql.args.1"],
-    ["forum/forum_description", "sql.args.2"],
-    ["forum/parent_forum_id", "sql.args.3"],
-    ["forum/status", "sql.args.4"],
-    ["forum/time_created", "sql.args.5"],
-    ["forum/time_updated", "sql.args.6"],
+    ["forum", "", [
+        ["forum_id", "sql.args.0"],
+        ["forum_name", "sql.args.1"],
+        ["forum_description", "sql.args.2"],
+        ["parent_forum_id", "sql.args.3"],
+        ["status", "sql.args.4"],
+        ["time_created", "sql.args.5"],
+        ["time_updated", "sql.args.6"],
+    ]]
 ]
 connector_mapping.forum_insert.res = [
-    ["debugging/database/affected_row_count", "sql.affected_row_count"],
+    ["", "debugging", [
+        ["", "database", [
+            ["sql.affected_row_count", "affected_row_count"],
+        ]]
+    ]]
 ]
 
 [flows.forum_generate_forum_data]
-in = [
-]
 out = [
-    ["forum_id", "forum/forum_id"],
-    ["status", "forum/status"],
-    ["time_created", "forum/time_created"],
-    ["time_updated", "forum/time_updated"],
+    ["", "forum", [
+        ["forum_id", "forum_id"],
+        ["status", "status"],
+        ["time_created", "time_created"],
+        ["time_updated", "time_updated"],
+    ]]
 ]
 flow.steps = [
     { "@uuid" = ["forum_id"] },
@@ -84,7 +104,11 @@ flow.steps = [
 
 [flows.forum_check_existing]
 in = [
-    ["database/forum/parent_forum_id", "parent_forum_id"],
+    ["database", "", [
+        ["forum", "", [
+            ["parent_forum_id", "parent_forum_id"]
+        ]]
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["parent_forum_id", "check_parameter_failed", "parent forum is not found"] },
@@ -92,8 +116,10 @@ flow.steps = [
 
 [flows.forum_new_forum_validation]
 in = [
-    ["forum/forum_name", "forum_name"],
-    ["forum/forum_description", "forum_description"],
+    ["forum", "", [
+        ["forum_name", "forum_name"],
+        ["forum_description", "forum_description"],
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["forum_name", "check_parameter_failed", "forum_name is empty"] },

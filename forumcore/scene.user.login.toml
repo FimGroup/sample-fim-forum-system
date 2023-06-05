@@ -28,11 +28,19 @@ pipeline.steps = [
     ],
 ]
 connector_mapping.http_inst.req = [
-    ["user/username", "http/body/username"],
-    ["user/password", "http/body/password"],
+    ["http", "", [
+        ["body", "user", [
+            ["username", "username"],
+            ["password", "password"],
+        ]]
+    ]]
 ]
 connector_mapping.http_inst.res = [
-    ["user/user_id", "http/body/user_id"],
+    ["", "http", [
+        ["user", "body", [
+            ["user_id", "user_id"],
+        ]]
+    ]]
 ]
 connector_mapping.http_inst.err_simple = [
     { "error_key" = "check_missing_user", "error_message" = "http/body/message", "http/status" = "404" },
@@ -40,17 +48,27 @@ connector_mapping.http_inst.err_simple = [
     { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
 ]
 connector_mapping.query_user.req = [
-    ["user/username", "sql.args.0"],
+    ["user", "", [
+        ["username", "sql.args.0"],
+    ]]
 ]
 connector_mapping.query_user.res = [
-    ["user/user_id", "sql.result.0"],
-    ["database/user/password", "sql.result.1"],
+    ["", "user", [
+        ["sql.result.0", "user_id"],
+    ]],
+    ["", "database", [
+        ["", "user", [
+            ["sql.result.1", "password"],
+        ]]
+    ]]
 ]
 
 [flows.login_validation]
 in = [
-    ["user/username", "username"],
-    ["user/password", "password"],
+    ["user", "", [
+        ["username", "username"],
+        ["password", "password"],
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["username", "check_parameter_failed", "username is empty"] },
@@ -59,7 +77,9 @@ flow.steps = [
 
 [flows.login_user_existing_check]
 in = [
-    ["user/user_id", "user_id"],
+    ["user", "", [
+        ["user_id", "user_id"]
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["user_id", "check_missing_user", "user not found"] }
@@ -67,8 +87,14 @@ flow.steps = [
 
 [flows.login_check_password]
 in = [
-    ["user/password", "user_input_password"],
-    ["database/user/password", "database_password"],
+    ["user", "", [
+        ["password", "user_input_password"],
+    ]],
+    ["database", "", [
+        ["user", "", [
+            ["password", "database_password"],
+        ]]
+    ]]
 ]
 flow.steps = [
     { "@assign" = ["constant_true", true] },

@@ -1,0 +1,135 @@
+[pipelines.list_posts_by_forum]
+metadata.version = "1.0"
+pipeline.source_connectors = [
+    [
+        ["@connector", "http_rest"],
+        ["@mapping", "http_inst"],
+        ["http.listen", "0.0.0.0:8081"],
+        ["http.method", "get"],
+        ["http.path", "/posts"],
+    ],
+]
+pipeline.steps = [
+    # validate request
+    [
+        ["@flow", "list_post_request_validation"],
+    ],
+    # query forum
+    [
+        ["@flow", "&database_postgres"],
+        ["@mapping", "query_forum"],
+        ["database.connect_string", "configure-static://forum_database"],
+        ["database.operation", "query"],
+        ["database.sql", "select forum_id, forum_name, forum_description, parent_forum_id, status, time_created, time_updated from \"forums\" where forum_id = $1"],
+    ],
+    # validate forum available
+    [
+        ["@flow", "validate_forum_available"],
+    ],
+    # prepare querying posts
+    [
+        ["@flow", "prepare_querying_posts_params"],
+    ],
+    # query posts
+    [
+        ["@flow", "&database_postgres"],
+        ["@mapping", "query_posts"],
+        ["database.connect_string", "configure-static://forum_database"],
+        ["database.operation", "query"],
+        ["database.sql", "select post_id, parent_post_id, post_type, author_id, forum_id, title, content, status, time_created, time_updated from \"posts\" where forum_id = $1 and post_type = 1 order by time_created desc limit $2"],
+    ]
+]
+connector_mapping.http_inst.req = [
+    ["http", "forum", [
+        ["query_string", "", [
+            ["forum_id", "forum_id"],
+        ]]
+    ]]
+]
+connector_mapping.http_inst.res = [
+    ["", "http", [
+        ["posts[]", "body[]", [
+            ["post_id", "post_id"],
+            ["parent_post_id", "parent_post_id"],
+            ["post_type", "post_type"],
+            ["author_id", "author_id"],
+            ["forum_id", "forum_id"],
+            ["title", "title"],
+            ["content", "content"],
+            ["status", "status"],
+            ["time_created", "time_created"],
+            ["time_updated", "time_updated"],
+        ]]
+    ]]
+]
+connector_mapping.http_inst.err_simple = [
+    { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
+]
+connector_mapping.query_forum.req = [
+    ["forum", "", [
+        ["forum_id", "sql.args.0"],
+    ]]
+]
+connector_mapping.query_forum.res = [
+    # not mapping full parameters for convenience
+    ["", "forum", [
+        ["sql.result.0", "forum_id"],
+        ["sql.result.4", "status"],
+    ]]
+]
+connector_mapping.query_posts.req = [
+    ["database", "", [
+        ["common_parameter", "", [
+            ["limit_count", "sql.args.1"],
+        ]]
+    ]],
+    ["forum", "", [
+        ["forum_id", "sql.args.0"],
+    ]]
+]
+connector_mapping.query_posts.res = [
+    ["sql.results[]", "posts[]", [
+        ["arg0", "post_id"],
+        ["arg1", "parent_post_id"],
+        ["arg2", "post_type"],
+        ["arg3", "author_id"],
+        ["arg4", "forum_id"],
+        ["arg5", "title"],
+        ["arg6", "content"],
+        ["arg7", "status"],
+        ["arg8", "time_created"],
+        ["arg9", "time_updated"],
+    ]]
+]
+
+[flows.list_post_request_validation]
+in = [
+    ["forum", "", [
+        ["forum_id", "forum_id"],
+    ]]
+]
+flow.steps = [
+    { "@check_not_blank_break" = ["forum_id", "check_parameter_failed", "forum_id is empty"] },
+    { "#print_obj" = ["forum_id"] },
+]
+[flows.validate_forum_available]
+in = [
+    ["forum", "", [
+        ["status", "status"],
+    ]]
+]
+flow.steps = [
+    { "@check_exist_break" = ["status", "check_parameter_failed", "forum is not found"] }
+]
+[flows.prepare_querying_posts_params]
+out = [
+    ["", "database", [
+        ["", "common_parameter", [
+            ["limit_count", "limit_count"],
+        ]]
+    ]]
+]
+flow.steps = [
+    { "@assign" = ["limit_count", 10] },
+]
+

@@ -16,7 +16,7 @@ func FnPrintObject(params []interface{}) (pluginapi.Fn, error) {
 	paths := rule.SplitFullPath(key)
 	return func(m pluginapi.Model) error {
 		//FIXME have to handle object/array properly
-		o := m.GetFieldUnsafe(paths)
+		o := m.GetFieldUnsafe0(paths)
 		fmt.Println("print object:", o)
 		return nil
 	}, nil
