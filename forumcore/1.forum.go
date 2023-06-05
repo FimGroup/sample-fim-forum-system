@@ -53,6 +53,7 @@ func StartForum() error {
 		"scene.user.login.toml",
 		"scene.forums.new_forum.toml",
 		"scene.posts.new_post.toml",
+		"scene.posts.list_posts_by_forum.toml",
 	}); err != nil {
 		return err
 	}

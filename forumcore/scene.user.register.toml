@@ -75,22 +75,38 @@ pipeline.steps = [
     ],
 ]
 connector_mapping.query_user.req = [
-    ["user/username", "sql.args.0"]
+    ["user", "", [
+        ["username", "sql.args.0"],
+    ]]
 ]
 connector_mapping.query_user.res = [
-    ["user/user_id", "sql.result.0"]
+    ["", "user", [
+        ["sql.result.0", "user_id"],
+    ]]
 ]
 # connector mapping for both source and target connector
-# FlowModel -> Connector Model
+# FlowModel <-> Connector Model
+# Note: do not rely on the order of the mapping list
+# Note2: recommended not to duplicate mappings
 connector_mapping.http_inst.req = [
-    ["user/username", "http/body/username"],
-    ["user/password", "http/body/password"],
-    ["user/nickname", "http/body/nickname"],
+    ["http", "", [
+        ["body", "user", [
+            ["username", "username"],
+            ["password", "password"],
+            ["nickname", "nickname"],
+        ]]
+    ]]
 ]
 # connector mapping for both source and target connector and also for both directions of in and out
-# FlowModel -> Connector Model
+# FlowModel <-> Connector Model
+# Note: do not rely on the order of the mapping list
+# Note2: recommended not to duplicate mappings
 connector_mapping.http_inst.res = [
-    ["user/user_id", "http/body/user_id"],
+    ["", "http", [
+        ["user", "body", [
+            ["user_id", "user_id"],
+        ]]
+    ]]
 ]
 # connector mapping for source connector only to handle breaking error
 connector_mapping.http_inst.err_simple = [
@@ -98,20 +114,28 @@ connector_mapping.http_inst.err_simple = [
     { "error_key" = "check_missing_field", "error_message" = "http/body/message", "http/status" = "400" },
 ]
 connector_mapping.db_pg_insert.req = [
-    ["user/user_id", "sql.args.0"],
-    ["user/username", "sql.args.1"],
-    ["user/password", "sql.args.2"],
-    ["user/nickname", "sql.args.3"],
-    ["user/time_created", "sql.args.4"],
-    ["user/time_updated", "sql.args.5"],
+    ["user", "", [
+        ["user_id", "sql.args.0"],
+        ["username", "sql.args.1"],
+        ["password", "sql.args.2"],
+        ["nickname", "sql.args.3"],
+        ["time_created", "sql.args.4"],
+        ["time_updated", "sql.args.5"],
+    ]]
 ]
 connector_mapping.db_pg_insert.res = [
-    ["debugging/database/affected_row_count", "sql.affected_row_count"],
+    ["", "debugging", [
+        ["", "database", [
+            ["sql.affected_row_count", "affected_row_count"],
+        ]]
+    ]]
 ]
 
 [flows.register_existing_check]
 in = [
-    ["user/user_id", "user_id"],
+    ["user", "", [
+        ["user_id", "user_id"],
+    ]]
 ]
 flow.steps = [
     { "@check_empty_break" = ["user_id", "check_key_user_exists", "(displayed) username exists"] }
@@ -120,29 +144,35 @@ flow.steps = [
 [flows.register_validation]
 # flowmodels -> local parameters
 # parameters that are not existing here will be ignored
-# default value will be given based on the type of left if the left value not exist
+# default value may be given based on the type of left if the left value not exist
 # Note: Execution order is not defined. Don't rely on the order.
+# Note2: recommended not to duplicate mappings
 in = [
-    ["user/user_id", "user_id"],
-    ["user/username", "username"],
-    ["user/password", "password"],
-    ["user/nickname", "nickname"],
+    ["user", "", [
+        ["user_id", "user_id"],
+        ["username", "username"],
+        ["password", "password"],
+        ["nickname", "nickname"],
+    ]]
 ]
 pre_out = [
     # "@remove" command will remove the given value from the flowmodels
     # Note: Execution order is not defined. Don't rely on the order.
-    #["@remove", "user"]
+    #["@remove-object", "user"]
 ]
 # local parameters -> flowmodels
 # possible paths: "user/username", "user/phone", "user/phone[1]" which are ALL valid paths(not valid path of definition)
-# default value will be  based on the type of right if the left value not exist
+# default value may be  based on the type of right if the left value not exist
 # Note: Execution order is not defined. Don't rely on the order.
+# Note2: recommended not to duplicate mappings
 out = [
-    ["user_id", "user/user_id"],
-    ["username", "user/username"],
-    ["nickname", "user/nickname"],
-    ["time_created", "user/time_created"],
-    ["time_updated", "user/time_updated"],
+    ["", "user", [
+        ["user_id", "user_id"],
+        ["username", "username"],
+        ["nickname", "nickname"],
+        ["time_created", "time_created"],
+        ["time_updated", "time_updated"],
+    ]]
 ]
 flow.steps = [
     # invoke function - "@function" = [ parameter list ]
@@ -158,12 +188,18 @@ flow.steps = [
 
 [flows.register_generate_user_data]
 in = [
-    ["user/user_id", "user_id"],
-    ["user/password", "password"],
+    ["user", "", [
+        ["user_id", "user_id"],
+        ["password", "password"],
+    ]]
 ]
 out = [
-    ["user_id", "user/user_id"],
-    ["password", "user/password"],
+    ["", "user", [
+        ["user_id", "user_id"],
+        ["password", "password"],
+        ["time_created", "time_created"],
+        ["time_updated", "time_updated"],
+    ]]
 ]
 flow.steps = [
     { "@uuid" = ["user_id"] },
@@ -176,7 +212,11 @@ flow.steps = [
 
 [flows.send_register_notification]
 in = [
-    ["debugging/database/affected_row_count", "affected_row_count"]
+    ["debugging", "", [
+        ["database", "", [
+            ["affected_row_count", "affected_row_count"],
+        ]]
+    ]]
 ]
 pre_out = []
 out = []

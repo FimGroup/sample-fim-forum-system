@@ -76,65 +76,108 @@ pipeline.steps = [
     ],
 ]
 connector_mapping.http_inst.req = [
-    ["user/user_id", "http/body/author_id"],
-    ["forum/forum_id", "http/body/forum_id"],
-    ["post/parent_post_id", "http/body/parent_post_id"],
-    ["post/title", "http/body/title"],
-    ["post/content", "http/body/content"],
+    ["http", "", [
+        ["body", "user", [
+            ["author_id", "user_id"],
+        ]],
+        ["body", "forum", [
+            ["forum_id", "forum_id"],
+        ]],
+        ["body", "post", [
+            ["parent_post_id", "parent_post_id"],
+            ["title", "title"],
+            ["content", "content"],
+        ]]
+    ]]
 ]
 connector_mapping.http_inst.res = [
-    ["post/post_id", "http/body/post_id"],
+    ["", "http", [
+        ["post", "body", [
+            ["post_id", "post_id"],
+        ]]
+    ]]
 ]
 connector_mapping.http_inst.err_simple = [
     { "error_key" = "check_missing_parameter", "error_message" = "http/body/message", "http/status" = "400" },
     { "error_key" = "check_parameter_available", "error_message" = "http/body/message", "http/status" = "400" },
 ]
 connector_mapping.query_user.req = [
-    ["user/user_id", "sql.args.0"],
+    ["user", "", [
+        ["user_id", "sql.args.0"],
+    ]]
 ]
 connector_mapping.query_user.res = [
-    ["database/user/user_id", "sql.result.0"],
+    ["", "database", [
+        ["", "user", [
+            ["sql.result.0", "user_id"],
+        ]]
+    ]]
 ]
 connector_mapping.query_forum.req = [
-    ["forum/forum_id", "sql.args.0"],
+    ["forum", "", [
+        ["forum_id", "sql.args.0"],
+    ]]
 ]
 connector_mapping.query_forum.res = [
-    ["database/forum/forum_id", "sql.result.0"],
+    ["", "database", [
+        ["", "forum", [
+            ["sql.result.0", "forum_id"],
+        ]]
+    ]]
 ]
 connector_mapping.query_parent_post.req = [
-    ["post/parent_post_id", "sql.args.0"],
+    ["post", "", [
+        ["parent_post_id", "sql.args.0"],
+    ]]
 ]
 connector_mapping.query_parent_post.res = [
-    ["database/post/parent_post_id", "sql.result.0"],
-    ["database/post/post_type", "sql.result.1"],
+    ["", "database", [
+        ["", "post", [
+            ["sql.result.0", "parent_post_id"],
+            ["sql.result.1", "post_type"],
+        ]]
+    ]]
 ]
-[pipelines.posts_new_post.connector_mapping.post_insert]
-req = [
-    ["post/post_id", "sql.args.0"],
-    ["post/parent_post_id", "sql.args.1"],
-    ["post/post_type", "sql.args.2"],
-    ["user/user_id", "sql.args.3"],
-    ["forum/forum_id", "sql.args.4"],
-    ["post/title", "sql.args.5"],
-    ["post/content", "sql.args.6"],
-    ["post/status", "sql.args.7"],
-    ["post/time_created", "sql.args.8"],
-    ["post/time_updated", "sql.args.9"],
+connector_mapping.post_insert.req = [
+    ["post", "", [
+        ["post_id", "sql.args.0"],
+        ["parent_post_id", "sql.args.1"],
+        ["post_type", "sql.args.2"],
+        ["title", "sql.args.5"],
+        ["content", "sql.args.6"],
+        ["status", "sql.args.7"],
+        ["time_created", "sql.args.8"],
+        ["time_updated", "sql.args.9"],
+    ]],
+    ["user", "", [
+        ["user_id", "sql.args.3"],
+    ]],
+    ["forum", "", [
+        ["forum_id", "sql.args.4"],
+    ]]
 ]
-res = [
-    ["debugging/database/affected_row_count", "sql.affected_row_count"],
+connector_mapping.post_insert.res = [
+    ["", "debugging", [
+        ["", "database", [
+            ["sql.affected_row_count", "affected_row_count"],
+        ]]
+    ]]
 ]
 
 [flows.new_post_prepare_post_data]
 in = [
-    ["post/parent_post_id", "parent_post_id"],
+    ["post", "", [
+        ["parent_post_id", "parent_post_id"],
+    ]]
 ]
 out = [
-    ["post_id", "post/post_id"],
-    ["status", "post/status"],
-    ["time_created", "post/time_created"],
-    ["time_updated", "post/time_updated"],
-    ["post_type", "post/post_type"],
+    ["", "post", [
+        ["post_id", "post_id"],
+        ["status", "status"],
+        ["time_created", "time_created"],
+        ["time_updated", "time_updated"],
+        ["post_type", "post_type"],
+    ]]
 ]
 flow.steps = [
     { "@uuid" = ["post_id"] },
@@ -147,8 +190,12 @@ flow.steps = [
 
 [flows.new_post_check_parent_post]
 in = [
-    ["database/post/parent_post_id", "parent_post_id"],
-    ["database/post/post_type", "post_type"],
+    ["database", "", [
+        ["post", "", [
+            ["parent_post_id", "parent_post_id"],
+            ["post_type", "post_type"],
+        ]]
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["parent_post_id", "check_parameter_available", "parent post is not found"] },
@@ -158,7 +205,11 @@ flow.steps = [
 
 [flows.new_post_check_forum_exists]
 in = [
-    ["database/forum/forum_id", "forum_id"],
+    ["database", "", [
+        ["forum", "", [
+            ["forum_id", "forum_id"],
+        ]]
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["forum_id", "check_parameter_available", "forum is not found"] },
@@ -166,7 +217,11 @@ flow.steps = [
 
 [flows.new_post_check_user_exists]
 in = [
-    ["database/user/user_id", "user_id"],
+    ["database", "", [
+        ["user", "", [
+            ["user_id", "user_id"],
+        ]]
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["user_id", "check_parameter_available", "user is not found"] },
@@ -174,10 +229,16 @@ flow.steps = [
 
 [flows.new_post_validation]
 in = [
-    ["user/user_id", "user_id"],
-    ["forum/forum_id", "forum_id"],
-    ["post/title", "title"],
-    ["post/content", "content"],
+    ["user", "", [
+        ["user_id", "user_id"]
+    ]],
+    ["forum", "", [
+        ["forum_id", "forum_id"]
+    ]],
+    ["post", "", [
+        ["title", "title"],
+        ["content", "content"],
+    ]]
 ]
 flow.steps = [
     { "@check_not_blank_break" = ["user_id", "check_missing_parameter", "user_id is missing"] },

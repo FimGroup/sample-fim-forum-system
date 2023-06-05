@@ -50,3 +50,15 @@
 "database/post/parent_post_id" = "string"
 "database/post/post_type" = "int"
 
+"database/common_parameter/limit_count" = "int"
+
+"posts[]/post_id" = "string"
+"posts[]/parent_post_id" = "string"
+"posts[]/post_type" = "int"
+"posts[]/author_id" = "int"
+"posts[]/forum_id" = "string"
+"posts[]/title" = "string"
+"posts[]/content" = "string"
+"posts[]/status" = "int"
+"posts[]/time_created" = "int"
+"posts[]/time_updated" = "int"
