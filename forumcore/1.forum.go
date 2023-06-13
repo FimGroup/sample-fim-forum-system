@@ -6,9 +6,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/FimGroup/fim/components"
 	"github.com/FimGroup/fim/fimapi/basicapi"
 	"github.com/FimGroup/fim/fimcore"
+	"github.com/FimGroup/fim/fimsupport/logging"
 )
 
 //go:embed flowmodel.*.toml
@@ -18,10 +21,25 @@ var flowModelFs embed.FS
 var sceneFs embed.FS
 
 func StartForum() error {
+	// init logging
+	{
+		lm, err := logging.NewLoggerManager("logs/forum", 7, 20*1024*1024, 5, logrus.InfoLevel, true, false)
+		if err != nil {
+			return err
+		}
+		logging.SetLoggerManager(lm)
+	}
+	// init fim core
+	if err := fimcore.Init(); err != nil {
+		return err
+	}
+	// create container
 	container := fimcore.NewUseContainer()
+	// init plugins/components
 	if err := components.InitComponent(container); err != nil {
 		return err
 	}
+	// setup configure manager
 	settableConfigureManager := fimcore.NewSettableConfigureManager()
 	{
 		dburl, ok := os.LookupEnv("DATABASE_URL")
@@ -30,12 +48,14 @@ func StartForum() error {
 		}
 		settableConfigureManager.SetConfigure("forum_database", dburl)
 	}
+	// load configure manager
 	if err := loadConfigureManager(container, []basicapi.ConfigureManager{
 		fimcore.NewEnvConfigureManager(),
 		settableConfigureManager,
 	}); err != nil {
 		return err
 	}
+	// load custom functions
 	if err := loadCustomFn(container, map[string]basicapi.FnGen{
 		"#print_obj": FnPrintObject,
 		"#panic":     FnPanic,
@@ -43,11 +63,13 @@ func StartForum() error {
 		return err
 	}
 
+	// load FlowModels
 	if err := loadFlowModel(container, []string{
 		"flowmodel.all.toml",
 	}); err != nil {
 		return err
 	}
+	// load pipelines/flows
 	if err := loadMerged(container, []string{
 		"scene.user.register.toml",
 		"scene.user.login.toml",
@@ -58,6 +80,7 @@ func StartForum() error {
 		return err
 	}
 
+	// start container
 	if err := container.StartContainer(); err != nil {
 		return err
 	}
