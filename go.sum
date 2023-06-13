@@ -40,6 +40,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/FimGroup/fim v0.0.2-0.20230613161717-e2cf270606c7 h1:0R4XjOSxKgwPlc0pYU211L3xhgiO0fekSdVhdjUoURo=
 github.com/FimGroup/fim v0.0.2-0.20230613161717-e2cf270606c7/go.mod h1:qfpFx34QKMiwSGLw3X1SCIxtuSA6os6MA3seZVf7EGs=
+github.com/FimGroup/fim v0.0.2-0.20230613165807-937dea5eecd4 h1:oa1lGHg+h2ogIdzbP3HghUnV2sodYHj2AFq+Byg+x88=
+github.com/FimGroup/fim v0.0.2-0.20230613165807-937dea5eecd4/go.mod h1:8j9FxD7QSmE6ZU3ZzpZAjw6rOaAofxRMKSJnLuAv7o8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
