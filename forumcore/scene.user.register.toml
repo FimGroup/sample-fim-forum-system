@@ -26,10 +26,37 @@ pipeline.source_connectors = [
     # Note2: the connector will also share the same FlowModel
     [
         ["@connector", "http_rest"],
-        ["@mapping", "http_inst"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/user/register"],
+        # Source connector mapping have four parameters: @mapping operation, req, res, err_simple
+        ["@mapping", [
+            # connector mapping for both source and target connector
+            # FlowModel <-> Connector Model
+            # Note: do not rely on the order of the mapping list
+            # Note2: recommended not to duplicate mappings
+            ["http", "", [
+                ["body", "user", [
+                    ["username", "username"],
+                    ["password", "password"],
+                    ["nickname", "nickname"],
+                ]]
+            ]]
+        ], [
+            # connector mapping for both source and target connector and also for both directions of in and out
+            # FlowModel <-> Connector Model
+            # Note: do not rely on the order of the mapping list
+            # Note2: recommended not to duplicate mappings
+            ["", "http", [
+                ["user", "body", [
+                    ["user_id", "user_id"],
+                ]]
+            ]]
+        ], [
+            # connector mapping for source connector only to handle breaking error
+            { "error_key" = "check_key_user_exists", "error_message" = "http/body/message", "http/status" = "201" },
+            { "error_key" = "check_missing_field", "error_message" = "http/body/message", "http/status" = "400" },
+        ]],
     ],
 ]
 pipeline.steps = [
@@ -47,10 +74,19 @@ pipeline.steps = [
     ],
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "query_user"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "query"],
         ["database.sql", "select user_id from \"user\" where username = $1"],
+        # Target connector mapping have three parameters: @mapping operation, req, res
+        ["@mapping", [
+            ["user", "", [
+                ["username", "sql.args.0"],
+            ]]
+        ], [
+            ["", "user", [
+                ["sql.result.0", "user_id"],
+            ]]
+        ]],
     ],
     [
         ["@flow", "register_existing_check"],
@@ -62,10 +98,25 @@ pipeline.steps = [
     # '&' should be used as prefix to indicate that the flow with the corresponding name is a connector
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "db_pg_insert"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "exec"],
         ["database.sql", "insert into \"user\" (user_id, username, password, nickname, time_created, time_updated) values ($1, $2, $3, $4, $5, $6)"],
+        ["@mapping", [
+            ["user", "", [
+                ["user_id", "sql.args.0"],
+                ["username", "sql.args.1"],
+                ["password", "sql.args.2"],
+                ["nickname", "sql.args.3"],
+                ["time_created", "sql.args.4"],
+                ["time_updated", "sql.args.5"],
+            ]]
+        ], [
+            ["", "debugging", [
+                ["", "database", [
+                    ["sql.affected_row_count", "affected_row_count"],
+                ]]
+            ]]
+        ]],
     ],
     # Trigger Event
     # Meaning this step should not have outputs or at least the outputs will be discarded
@@ -73,62 +124,6 @@ pipeline.steps = [
     [
         ["#flow", "send_register_notification"],
     ],
-]
-connector_mapping.query_user.req = [
-    ["user", "", [
-        ["username", "sql.args.0"],
-    ]]
-]
-connector_mapping.query_user.res = [
-    ["", "user", [
-        ["sql.result.0", "user_id"],
-    ]]
-]
-# connector mapping for both source and target connector
-# FlowModel <-> Connector Model
-# Note: do not rely on the order of the mapping list
-# Note2: recommended not to duplicate mappings
-connector_mapping.http_inst.req = [
-    ["http", "", [
-        ["body", "user", [
-            ["username", "username"],
-            ["password", "password"],
-            ["nickname", "nickname"],
-        ]]
-    ]]
-]
-# connector mapping for both source and target connector and also for both directions of in and out
-# FlowModel <-> Connector Model
-# Note: do not rely on the order of the mapping list
-# Note2: recommended not to duplicate mappings
-connector_mapping.http_inst.res = [
-    ["", "http", [
-        ["user", "body", [
-            ["user_id", "user_id"],
-        ]]
-    ]]
-]
-# connector mapping for source connector only to handle breaking error
-connector_mapping.http_inst.err_simple = [
-    { "error_key" = "check_key_user_exists", "error_message" = "http/body/message", "http/status" = "201" },
-    { "error_key" = "check_missing_field", "error_message" = "http/body/message", "http/status" = "400" },
-]
-connector_mapping.db_pg_insert.req = [
-    ["user", "", [
-        ["user_id", "sql.args.0"],
-        ["username", "sql.args.1"],
-        ["password", "sql.args.2"],
-        ["nickname", "sql.args.3"],
-        ["time_created", "sql.args.4"],
-        ["time_updated", "sql.args.5"],
-    ]]
-]
-connector_mapping.db_pg_insert.res = [
-    ["", "debugging", [
-        ["", "database", [
-            ["sql.affected_row_count", "affected_row_count"],
-        ]]
-    ]]
 ]
 
 [flows.register_existing_check]

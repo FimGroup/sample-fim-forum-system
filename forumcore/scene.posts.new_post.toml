@@ -6,10 +6,33 @@ parameter.local_variables = [
 pipeline.source_connectors = [
     [
         ["@connector", "http_rest"],
-        ["@mapping", "http_inst"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/posts/new"],
+        ["@mapping", [
+            ["http", "", [
+                ["body", "user", [
+                    ["author_id", "user_id"],
+                ]],
+                ["body", "forum", [
+                    ["forum_id", "forum_id"],
+                ]],
+                ["body", "post", [
+                    ["parent_post_id", "parent_post_id"],
+                    ["title", "title"],
+                    ["content", "content"],
+                ]]
+            ]]
+        ], [
+            ["", "http", [
+                ["post", "body", [
+                    ["post_id", "post_id"],
+                ]]
+            ]]
+        ], [
+            { "error_key" = "check_missing_parameter", "error_message" = "http/body/message", "http/status" = "400" },
+            { "error_key" = "check_parameter_available", "error_message" = "http/body/message", "http/status" = "400" },
+        ]],
     ],
 ]
 pipeline.steps = [
@@ -19,10 +42,20 @@ pipeline.steps = [
     # query user and check user exists
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "query_user"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "query"],
         ["database.sql", "select user_id from \"user\" where user_id = $1"],
+        ["@mapping", [
+            ["user", "", [
+                ["user_id", "sql.args.0"],
+            ]]
+        ], [
+            ["", "database", [
+                ["", "user", [
+                    ["sql.result.0", "user_id"],
+                ]]
+            ]]
+        ]],
     ],
     [
         ["@flow", "new_post_check_user_exists"],
@@ -30,10 +63,20 @@ pipeline.steps = [
     # query forum and check forum exists
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "query_forum"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "query"],
         ["database.sql", "select forum_id from \"forums\" where forum_id = $1"],
+        ["@mapping", [
+            ["forum", "", [
+                ["forum_id", "sql.args.0"],
+            ]]
+        ], [
+            ["", "database", [
+                ["", "forum", [
+                    ["sql.result.0", "forum_id"],
+                ]]
+            ]]
+        ]],
     ],
     [
         ["@flow", "new_post_check_forum_exists"],
@@ -42,10 +85,21 @@ pipeline.steps = [
     [
         ["@case-non-empty", "post/parent_post_id"],
         ["@flow", "&database_postgres"],
-        ["@mapping", "query_parent_post"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "query"],
         ["database.sql", "select post_id, post_type from \"posts\" where post_id = $1"],
+        ["@mapping", [
+            ["post", "", [
+                ["parent_post_id", "sql.args.0"],
+            ]]
+        ], [
+            ["", "database", [
+                ["", "post", [
+                    ["sql.result.0", "parent_post_id"],
+                    ["sql.result.1", "post_type"],
+                ]]
+            ]]
+        ]],
     ],
     [
         ["@case-non-empty", "post/parent_post_id"],
@@ -58,7 +112,6 @@ pipeline.steps = [
     # persist data
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "post_insert"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "exec"],
         ["database.sql", """
@@ -73,95 +126,31 @@ pipeline.steps = [
                        time_created,
                        time_updated)
             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);"""],
+        ["@mapping", [
+            ["post", "", [
+                ["post_id", "sql.args.0"],
+                ["parent_post_id", "sql.args.1"],
+                ["post_type", "sql.args.2"],
+                ["title", "sql.args.5"],
+                ["content", "sql.args.6"],
+                ["status", "sql.args.7"],
+                ["time_created", "sql.args.8"],
+                ["time_updated", "sql.args.9"],
+            ]],
+            ["user", "", [
+                ["user_id", "sql.args.3"],
+            ]],
+            ["forum", "", [
+                ["forum_id", "sql.args.4"],
+            ]]
+        ], [
+            ["", "debugging", [
+                ["", "database", [
+                    ["sql.affected_row_count", "affected_row_count"],
+                ]]
+            ]]
+        ]],
     ],
-]
-connector_mapping.http_inst.req = [
-    ["http", "", [
-        ["body", "user", [
-            ["author_id", "user_id"],
-        ]],
-        ["body", "forum", [
-            ["forum_id", "forum_id"],
-        ]],
-        ["body", "post", [
-            ["parent_post_id", "parent_post_id"],
-            ["title", "title"],
-            ["content", "content"],
-        ]]
-    ]]
-]
-connector_mapping.http_inst.res = [
-    ["", "http", [
-        ["post", "body", [
-            ["post_id", "post_id"],
-        ]]
-    ]]
-]
-connector_mapping.http_inst.err_simple = [
-    { "error_key" = "check_missing_parameter", "error_message" = "http/body/message", "http/status" = "400" },
-    { "error_key" = "check_parameter_available", "error_message" = "http/body/message", "http/status" = "400" },
-]
-connector_mapping.query_user.req = [
-    ["user", "", [
-        ["user_id", "sql.args.0"],
-    ]]
-]
-connector_mapping.query_user.res = [
-    ["", "database", [
-        ["", "user", [
-            ["sql.result.0", "user_id"],
-        ]]
-    ]]
-]
-connector_mapping.query_forum.req = [
-    ["forum", "", [
-        ["forum_id", "sql.args.0"],
-    ]]
-]
-connector_mapping.query_forum.res = [
-    ["", "database", [
-        ["", "forum", [
-            ["sql.result.0", "forum_id"],
-        ]]
-    ]]
-]
-connector_mapping.query_parent_post.req = [
-    ["post", "", [
-        ["parent_post_id", "sql.args.0"],
-    ]]
-]
-connector_mapping.query_parent_post.res = [
-    ["", "database", [
-        ["", "post", [
-            ["sql.result.0", "parent_post_id"],
-            ["sql.result.1", "post_type"],
-        ]]
-    ]]
-]
-connector_mapping.post_insert.req = [
-    ["post", "", [
-        ["post_id", "sql.args.0"],
-        ["parent_post_id", "sql.args.1"],
-        ["post_type", "sql.args.2"],
-        ["title", "sql.args.5"],
-        ["content", "sql.args.6"],
-        ["status", "sql.args.7"],
-        ["time_created", "sql.args.8"],
-        ["time_updated", "sql.args.9"],
-    ]],
-    ["user", "", [
-        ["user_id", "sql.args.3"],
-    ]],
-    ["forum", "", [
-        ["forum_id", "sql.args.4"],
-    ]]
-]
-connector_mapping.post_insert.res = [
-    ["", "debugging", [
-        ["", "database", [
-            ["sql.affected_row_count", "affected_row_count"],
-        ]]
-    ]]
 ]
 
 [flows.new_post_prepare_post_data]
