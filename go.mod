@@ -3,7 +3,7 @@ module github.com/FimGroup/sample-fim-forum-system
 go 1.20
 
 require (
-	github.com/FimGroup/fim v0.0.2-0.20230613165807-937dea5eecd4
+	github.com/FimGroup/fim v0.0.2-0.20230614141314-bf2fd2079d3d
 	github.com/sirupsen/logrus v1.9.3
 )
 

@@ -3,10 +3,27 @@ metadata.version = "1.0"
 pipeline.source_connectors = [
     [
         ["@connector", "http_rest"],
-        ["@mapping", "http_inst"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/user/login"],
+        ["@mapping", [
+            ["http", "", [
+                ["body", "user", [
+                    ["username", "username"],
+                    ["password", "password"],
+                ]]
+            ]]
+        ], [
+            ["", "http", [
+                ["user", "body", [
+                    ["user_id", "user_id"],
+                ]]
+            ]]
+        ], [
+            { "error_key" = "check_missing_user", "error_message" = "http/body/message", "http/status" = "404" },
+            { "error_key" = "check_mismatch_password", "error_message" = "http/body/message", "http/status" = "401" },
+            { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
+        ]],
     ],
 ]
 pipeline.steps = [
@@ -15,10 +32,23 @@ pipeline.steps = [
     ],
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "query_user"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "query"],
         ["database.sql", "select user_id, password from \"user\" where username = $1"],
+        ["@mapping", [
+            ["user", "", [
+                ["username", "sql.args.0"],
+            ]]
+        ], [
+            ["", "user", [
+                ["sql.result.0", "user_id"],
+            ]],
+            ["", "database", [
+                ["", "user", [
+                    ["sql.result.1", "password"],
+                ]]
+            ]]
+        ]],
     ],
     [
         ["@flow", "login_user_existing_check"],
@@ -26,41 +56,6 @@ pipeline.steps = [
     [
         ["@flow", "login_check_password"],
     ],
-]
-connector_mapping.http_inst.req = [
-    ["http", "", [
-        ["body", "user", [
-            ["username", "username"],
-            ["password", "password"],
-        ]]
-    ]]
-]
-connector_mapping.http_inst.res = [
-    ["", "http", [
-        ["user", "body", [
-            ["user_id", "user_id"],
-        ]]
-    ]]
-]
-connector_mapping.http_inst.err_simple = [
-    { "error_key" = "check_missing_user", "error_message" = "http/body/message", "http/status" = "404" },
-    { "error_key" = "check_mismatch_password", "error_message" = "http/body/message", "http/status" = "401" },
-    { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
-]
-connector_mapping.query_user.req = [
-    ["user", "", [
-        ["username", "sql.args.0"],
-    ]]
-]
-connector_mapping.query_user.res = [
-    ["", "user", [
-        ["sql.result.0", "user_id"],
-    ]],
-    ["", "database", [
-        ["", "user", [
-            ["sql.result.1", "password"],
-        ]]
-    ]]
 ]
 
 [flows.login_validation]

@@ -3,10 +3,26 @@ metadata.version = "1.0"
 pipeline.source_connectors = [
     [
         ["@connector", "http_rest"],
-        ["@mapping", "http_inst"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/forums/new"],
+        ["@mapping", [
+            ["http", "", [
+                ["body", "forum", [
+                    ["forum_name", "forum_name"],
+                    ["forum_description", "forum_description"],
+                    ["parent_forum_id", "parent_forum_id"],
+                ]]
+            ]]
+        ], [
+            ["", "http", [
+                ["forum", "body", [
+                    ["forum_id", "forum_id"],
+                ]]
+            ]]
+        ], [
+            { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
+        ]],
     ],
 ]
 pipeline.steps = [
@@ -16,10 +32,20 @@ pipeline.steps = [
     [
         ["@case-non-empty", "forum/parent_forum_id"],
         ["@flow", "&database_postgres"],
-        ["@mapping", "query_forum"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "query"],
         ["database.sql", "select forum_id from \"forums\" where forum_id = $1"],
+        ["@mapping", [
+            ["forum", "", [
+                ["parent_forum_id", "sql.args.0"],
+            ]]
+        ], [
+            ["", "database", [
+                ["", "forum", [
+                    ["sql.result.0", "parent_forum_id"],
+                ]]
+            ]]
+        ]],
     ],
     [
         ["@case-non-empty", "forum/parent_forum_id"],
@@ -30,60 +56,27 @@ pipeline.steps = [
     ],
     [
         ["@flow", "&database_postgres"],
-        ["@mapping", "forum_insert"],
         ["database.connect_string", "configure-static://forum_database"],
         ["database.operation", "exec"],
         ["database.sql", "insert into forums (forum_id, forum_name, forum_description, parent_forum_id, status, time_created, time_updated) values ($1, $2, $3, $4, $5, $6, $7);"],
+        ["@mapping", [
+            ["forum", "", [
+                ["forum_id", "sql.args.0"],
+                ["forum_name", "sql.args.1"],
+                ["forum_description", "sql.args.2"],
+                ["parent_forum_id", "sql.args.3"],
+                ["status", "sql.args.4"],
+                ["time_created", "sql.args.5"],
+                ["time_updated", "sql.args.6"],
+            ]]
+        ], [
+            ["", "debugging", [
+                ["", "database", [
+                    ["sql.affected_row_count", "affected_row_count"],
+                ]]
+            ]]
+        ]],
     ],
-]
-connector_mapping.http_inst.req = [
-    ["http", "", [
-        ["body", "forum", [
-            ["forum_name", "forum_name"],
-            ["forum_description", "forum_description"],
-            ["parent_forum_id", "parent_forum_id"],
-        ]]
-    ]]
-]
-connector_mapping.http_inst.res = [
-    ["", "http", [
-        ["forum", "body", [
-            ["forum_id", "forum_id"],
-        ]]
-    ]]
-]
-connector_mapping.http_inst.err_simple = [
-    { "error_key" = "check_parameter_failed", "error_message" = "http/body/message", "http/status" = "400" },
-]
-connector_mapping.query_forum.req = [
-    ["forum", "", [
-        ["parent_forum_id", "sql.args.0"],
-    ]]
-]
-connector_mapping.query_forum.res = [
-    ["", "database", [
-        ["", "forum", [
-            ["sql.result.0", "parent_forum_id"],
-        ]]
-    ]]
-]
-connector_mapping.forum_insert.req = [
-    ["forum", "", [
-        ["forum_id", "sql.args.0"],
-        ["forum_name", "sql.args.1"],
-        ["forum_description", "sql.args.2"],
-        ["parent_forum_id", "sql.args.3"],
-        ["status", "sql.args.4"],
-        ["time_created", "sql.args.5"],
-        ["time_updated", "sql.args.6"],
-    ]]
-]
-connector_mapping.forum_insert.res = [
-    ["", "debugging", [
-        ["", "database", [
-            ["sql.affected_row_count", "affected_row_count"],
-        ]]
-    ]]
 ]
 
 [flows.forum_generate_forum_data]

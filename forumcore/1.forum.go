@@ -56,9 +56,10 @@ func StartForum() error {
 		return err
 	}
 	// load custom functions
+	customFunctions := &CustomFunctions{_logger: logging.GetLoggerManager().GetLogger("Forum")}
 	if err := loadCustomFn(container, map[string]basicapi.FnGen{
-		"#print_obj": FnPrintObject,
-		"#panic":     FnPanic,
+		"#print_obj": customFunctions.FnPrintObject,
+		"#panic":     customFunctions.FnPanic,
 	}); err != nil {
 		return err
 	}
