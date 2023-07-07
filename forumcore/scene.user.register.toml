@@ -26,6 +26,7 @@ pipeline.source_connectors = [
     # Note2: the connector will also share the same FlowModel
     [
         ["@connector", "http_rest"],
+        ["@instance", "http_rest_inst_forum"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/user/register"],
@@ -73,8 +74,8 @@ pipeline.steps = [
         ["example.parameter1", "value1"],
     ],
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select user_id from \"user\" where username = $1"],
         # Target connector mapping have three parameters: @mapping operation, req, res
@@ -97,8 +98,8 @@ pipeline.steps = [
     # target connector
     # '&' should be used as prefix to indicate that the flow with the corresponding name is a connector
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "exec"],
         ["database.sql", "insert into \"user\" (user_id, username, password, nickname, time_created, time_updated) values ($1, $2, $3, $4, $5, $6)"],
         ["@mapping", [

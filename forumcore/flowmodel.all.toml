@@ -42,6 +42,7 @@
 "post/time_updated" = "int"
 
 "debugging/database/affected_row_count" = "int"
+"debugging/http/parameter" = "string"
 
 "database/user/user_id" = "string"
 "database/user/password" = "string"
