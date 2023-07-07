@@ -3,6 +3,7 @@ metadata.version = "1.0"
 pipeline.source_connectors = [
     [
         ["@connector", "http_rest"],
+        ["@instance", "http_rest_inst_forum"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/user/login"],
@@ -31,8 +32,8 @@ pipeline.steps = [
         ["@flow", "login_validation"],
     ],
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select user_id, password from \"user\" where username = $1"],
         ["@mapping", [

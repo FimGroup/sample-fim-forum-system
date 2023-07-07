@@ -1,0 +1,5 @@
+[source_connector]
+
+[target_connector.forum_datasource]
+"@parent" = "&database_postgres"
+"database.connect_string" = "configure-static://forum_database"

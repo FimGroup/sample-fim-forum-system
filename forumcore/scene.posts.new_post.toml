@@ -6,6 +6,7 @@ parameter.local_variables = [
 pipeline.source_connectors = [
     [
         ["@connector", "http_rest"],
+        ["@instance", "http_rest_inst_forum"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "post"],
         ["http.path", "/posts/new"],
@@ -41,8 +42,8 @@ pipeline.steps = [
     ],
     # query user and check user exists
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select user_id from \"user\" where user_id = $1"],
         ["@mapping", [
@@ -62,8 +63,8 @@ pipeline.steps = [
     ],
     # query forum and check forum exists
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select forum_id from \"forums\" where forum_id = $1"],
         ["@mapping", [
@@ -84,8 +85,8 @@ pipeline.steps = [
     # if parent post exists, query parent post and check parent post exists and type
     [
         ["@case-non-empty", "post/parent_post_id"],
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select post_id, post_type from \"posts\" where post_id = $1"],
         ["@mapping", [
@@ -111,8 +112,8 @@ pipeline.steps = [
     ],
     # persist data
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "exec"],
         ["database.sql", """
             insert into posts (post_id,

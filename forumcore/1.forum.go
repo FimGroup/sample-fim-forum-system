@@ -5,13 +5,16 @@ import (
 	"errors"
 	"log"
 	"os"
-
-	"github.com/sirupsen/logrus"
+	"path/filepath"
 
 	"github.com/FimGroup/fim/components"
 	"github.com/FimGroup/fim/fimapi/basicapi"
+	"github.com/FimGroup/fim/fimapi/pluginapi"
 	"github.com/FimGroup/fim/fimcore"
-	"github.com/FimGroup/fim/fimsupport/logging"
+	"github.com/FimGroup/fim/fimsupport/resourcemanager"
+	"github.com/FimGroup/logging"
+
+	"github.com/sirupsen/logrus"
 )
 
 //go:embed flowmodel.*.toml
@@ -19,6 +22,9 @@ var flowModelFs embed.FS
 
 //go:embed scene.*.toml
 var sceneFs embed.FS
+
+//go:embed connector.*.toml
+var connectorFs embed.FS
 
 func StartForum() error {
 	// init logging
@@ -29,16 +35,8 @@ func StartForum() error {
 		}
 		logging.SetLoggerManager(lm)
 	}
-	// init fim core
-	if err := fimcore.Init(); err != nil {
-		return err
-	}
-	// create container
-	container := fimcore.NewUseContainer()
-	// init plugins/components
-	if err := components.InitComponent(container); err != nil {
-		return err
-	}
+	// init file manager
+	templateFileManager := resourcemanager.NewOsFileResourceManager("template_file_manager", filepath.Join("web", "templates"))
 	// setup configure manager
 	settableConfigureManager := fimcore.NewSettableConfigureManager()
 	{
@@ -47,6 +45,43 @@ func StartForum() error {
 			panic(errors.New("database url is not set in env"))
 		}
 		settableConfigureManager.SetConfigure("forum_database", dburl)
+	}
+
+	// init fim package and application
+	if err := fimcore.Init(); err != nil {
+		return err
+	}
+	app := fimcore.NewPluginApplication()
+	// setup app configure manager
+	if err := loadAppConfigureManager(app, []basicapi.FullConfigureManager{
+		fimcore.NewEnvConfigureManager(),
+		settableConfigureManager,
+	}); err != nil {
+		return err
+	}
+	// setup file manager
+	if err := app.AddFileResourceManager(templateFileManager); err != nil {
+		return err
+	}
+	// setup sub connectors
+	if err := loadAppSubConnectors(app, []string{
+		"connector.shared.toml",
+	}); err != nil {
+		return err
+	}
+	// load connectors
+	if err := components.InitConnectors(app); err != nil {
+		return err
+	}
+	if err := app.Startup(); err != nil {
+		return err
+	}
+
+	// create container
+	container := app.SpawnUseContainer()
+	// init plugins/components
+	if err := components.InitFunctions(container); err != nil {
+		return err
 	}
 	// load configure manager
 	if err := loadConfigureManager(container, []basicapi.ConfigureManager{
@@ -77,6 +112,7 @@ func StartForum() error {
 		"scene.forums.new_forum.toml",
 		"scene.posts.new_post.toml",
 		"scene.posts.list_posts_by_forum.toml",
+		"scene.show_user_register.toml",
 	}); err != nil {
 		return err
 	}
@@ -86,6 +122,15 @@ func StartForum() error {
 		return err
 	}
 
+	return nil
+}
+
+func loadAppConfigureManager(app pluginapi.ApplicationSupport, managers []basicapi.FullConfigureManager) error {
+	for _, v := range managers {
+		if err := app.AddConfigureManager(v); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -131,6 +176,21 @@ func loadMerged(container basicapi.BasicContainer, files []string) error {
 		log.Println("read scene content:", string(data))
 
 		if err := container.LoadMerged(string(data)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func loadAppSubConnectors(app pluginapi.ApplicationSupport, files []string) error {
+	for _, file := range files {
+		data, err := connectorFs.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		log.Println("read app sub content:", string(data))
+
+		if err := app.AddSubConnectorGeneratorDefinitions(string(data)); err != nil {
 			return err
 		}
 	}

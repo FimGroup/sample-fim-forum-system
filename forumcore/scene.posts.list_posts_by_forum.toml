@@ -3,6 +3,7 @@ metadata.version = "1.0"
 pipeline.source_connectors = [
     [
         ["@connector", "http_rest"],
+        ["@instance", "http_rest_inst_forum"],
         ["http.listen", "0.0.0.0:8081"],
         ["http.method", "get"],
         ["http.path", "/posts"],
@@ -39,8 +40,8 @@ pipeline.steps = [
     ],
     # query forum
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select forum_id, forum_name, forum_description, parent_forum_id, status, time_created, time_updated from \"forums\" where forum_id = $1"],
         ["@mapping", [
@@ -65,8 +66,8 @@ pipeline.steps = [
     ],
     # query posts
     [
-        ["@flow", "&database_postgres"],
-        ["database.connect_string", "configure-static://forum_database"],
+        ["@flow", "&forum_datasource"],
+        ["@instance", "database_forum"],
         ["database.operation", "query"],
         ["database.sql", "select post_id, parent_post_id, post_type, author_id, forum_id, title, content, status, time_created, time_updated from \"posts\" where forum_id = $1 and post_type = 1 order by time_created desc limit $2"],
         ["@mapping", [

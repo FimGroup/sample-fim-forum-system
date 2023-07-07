@@ -1,0 +1,47 @@
+[pipelines.show_user_register]
+metadata.version = "1.0"
+pipeline.source_connectors = [
+    [
+        ["@connector", "http_template"],
+        ["@instance", "http_rest_inst_forum"],
+        ["http.listen", "0.0.0.0:8081"],
+        ["http.method", "get"],
+        ["http.path", "/user/register/{username}"],
+        ["http.resource_manager", "template_file_manager"],
+        ["http.template_path", "/user/register.html"],
+        ["@mapping", [
+            ["http", "debugging", [
+                ["parameter", "http", [
+                    ["username", "parameter"]
+                ]]
+            ]]
+        ], [
+            ["debugging", "http", [
+                ["http", "body", [
+                    ["parameter", "username"]
+                ]]
+            ]]
+        ], []]
+    ],
+]
+
+pipeline.steps = [
+    [
+        ["@flow", "print_parameter"],
+    ],
+]
+
+[flows.print_parameter]
+in = [
+    ["debugging", "", [
+        ["http", "", [
+            ["parameter", "username"],
+        ]]
+    ]]
+]
+pre_out = []
+out = []
+flow.steps = [
+    { "#print_obj" = ["username"] },
+    #{ "#panic" = ["demo panic"] }
+]
